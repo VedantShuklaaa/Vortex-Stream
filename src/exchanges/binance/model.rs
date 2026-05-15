@@ -29,4 +29,3 @@ pub struct BinanceRawResponse {
     #[serde(rename = "M")]
     pub ignore: bool,
 }
-

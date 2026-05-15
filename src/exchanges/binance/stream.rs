@@ -5,19 +5,9 @@ use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use crate::{
-    exchanges::binance::model::BinanceRawResponse,
-    models::model::{NormalizedResponse, SubscribeMessage},
+    exchanges::binance::{model::BinanceRawResponse, normalize::normalize_binance_response},
+    models::normalized::{NormalizedResponse, SubscribeMessage},
 };
-
-fn normalize_binance_response(raw: BinanceRawResponse) -> NormalizedResponse {
-    NormalizedResponse {
-        exchange: "binance".to_string(),
-        symbol: raw.symbol,
-        last_price: raw.last_price,
-        quantity: raw.last_quantity,
-        timestamp: raw.timestamp,
-    }
-}
 
 pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
     let url = "wss://data-stream.binance.vision:443/ws";
@@ -61,15 +51,16 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
         while let Some(message) = read.next().await {
             match message {
                 Ok(Message::Text(text)) => {
-                    let parsed = serde_json::from_str::<BinanceRawResponse>(&text);
+                    if !text.contains("\"e\"") {
+                        continue;
+                    }
 
+                    let parsed = serde_json::from_str::<BinanceRawResponse>(&text);
                     match parsed {
                         Ok(wrapper) => {
                             let normalized_response = normalize_binance_response(wrapper);
-
                             let _ = tx.send(normalized_response);
                         }
-
                         Err(err) => {
                             eprintln!("parse error: {}", err);
                         }
@@ -78,12 +69,9 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
 
                 Ok(Message::Close(_)) => {
                     println!("websocket closed. reconnecting...");
-
                     break;
                 }
-
                 Ok(_) => {}
-
                 Err(err) => {
                     eprintln!("websocket error: {}", err);
 
@@ -93,7 +81,6 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
         }
 
         println!("reconnecting in 5 seconds");
-
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 }
