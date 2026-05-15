@@ -1,6 +1,9 @@
 use crate::{
-    core::{subscription_manager::SubscriptionManager, types::TradeCallback},
-    exchanges::binance::stream::binance_stream,
+    core::{
+        subscription_manager::SubscriptionManager,
+        types::{Exchange, TradeCallback},
+    },
+    exchanges::{binance::stream::binance_stream, coinbase::stream::coinbase_stream},
     models::normalized::NormalizedResponse,
 };
 use std::sync::Arc;
@@ -15,17 +18,33 @@ pub struct VortexStream {
 impl VortexStream {
     /// Creates a new realtime stream
     /// engine instance.
-    pub fn new() -> Self {
+    pub fn new(exchanges: Vec<Exchange>) -> Self {
         let (tx, _) = broadcast::channel::<NormalizedResponse>(100);
         let tx = Arc::new(tx);
 
-        let ws_tx = tx.clone();
+        for exchange in exchanges {
+            match exchange {
+                Exchange::Binance => {
+                    let binance_tx = tx.clone();
 
-        let _ = tokio::spawn(async move {
-            if let Err(err) = binance_stream(ws_tx).await {
-                eprint!("binance stream error: {}", err);
+                    tokio::spawn(async move {
+                        if let Err(err) = binance_stream(binance_tx).await {
+                            eprintln!("binance stream error: {}", err);
+                        }
+                    });
+                }
+
+                Exchange::Coinbase => {
+                    let coinbase_tx = tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = coinbase_stream(coinbase_tx).await {
+                            eprintln!("coinbase stream error: {}", err);
+                        }
+                    });
+                }
             }
-        });
+        }
 
         let manager = SubscriptionManager::new(tx.clone());
 

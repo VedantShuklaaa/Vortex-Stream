@@ -11,13 +11,14 @@ pub struct NormalizedResponse {
 	pub trade_id: String,
 	pub last_price: String,
 	pub quantity: String,
-	pub is_buyer_maker: bool,
+	pub is_buyer_maker: Option<bool>,
 	pub timestamp: u64,
 }
 
 #[derive(Serialize)]
-pub struct SubscribeMessage {
+pub struct SubMessageBinance {
     pub method: String,
     pub params: Vec<String>,
     pub id: u32,
 }
+

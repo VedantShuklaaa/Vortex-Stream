@@ -5,15 +5,18 @@ use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use crate::{
-    exchanges::binance::{model::BinanceRawResponse, normalize::normalize_binance_response},
-    models::normalized::{NormalizedResponse, SubMessageBinance},
+    exchanges::coinbase::{
+        model::{CoinbaseRawResponse, SubMessageCoinbase},
+        normalize::normalize_coinbase_response,
+    },
+    models::normalized::NormalizedResponse,
 };
 
-pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
-    let url = "wss://data-stream.binance.vision:443/ws";
+pub async fn coinbase_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
+    let url = "wss://ws-feed.exchange.coinbase.com";
 
     loop {
-        println!("connecting to {url}");
+        println!("connecting to url {url}");
         let connection = connect_async(url).await;
         let (ws_stream, _) = match connection {
             Ok(success) => {
@@ -21,7 +24,7 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
                 success
             }
             Err(err) => {
-                eprint!("connection failed: {}", err);
+                eprintln!("connection failed: {}", err);
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 continue;
             }
@@ -29,14 +32,14 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
 
         let (mut write, mut read) = ws_stream.split();
 
-        let subscribe_msg = SubMessageBinance {
-            method: "SUBSCRIBE".to_string(),
-            params: vec![
-                "btcusdt@trade".to_string(),
-                "ethusdt@trade".to_string(),
-                "solusdt@trade".to_string(),
+        let subscribe_msg = SubMessageCoinbase {
+            r#type: "subscribe".to_string(),
+            product_ids: vec![
+                "BTC-USD".to_string(),
+                "ETH-USD".to_string(),
+                "SOL-USD".to_string(),
             ],
-            id: 1,
+            channels: vec!["ticker".to_string()],
         };
 
         let json_message = serde_json::to_string(&subscribe_msg)?;
@@ -49,14 +52,14 @@ pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
         while let Some(message) = read.next().await {
             match message {
                 Ok(Message::Text(text)) => {
-                    if !text.contains("\"e\"") {
+                    if !text.contains("\"type\":\"ticker\"") {
                         continue;
                     }
 
-                    let parsed = serde_json::from_str::<BinanceRawResponse>(&text);
+                    let parsed = serde_json::from_str::<CoinbaseRawResponse>(&text);
                     match parsed {
                         Ok(wrapper) => {
-                            let normalized_response = normalize_binance_response(wrapper);
+                            let normalized_response = normalize_coinbase_response(wrapper);
                             let _ = tx.send(normalized_response);
                         }
                         Err(err) => {

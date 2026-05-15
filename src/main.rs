@@ -1,12 +1,14 @@
-use vortex_stream::VortexStream;
+use vortex_stream::{VortexStream, Exchange};
 
 #[tokio::main]
 async fn main() {
 
-    let stream = VortexStream::new();
+    let stream = VortexStream::new(vec![
+        Exchange::Coinbase,
+    ]);
 
     stream.trades(
-        "BTCUSDT",
+        "SOLUSD",
         |trade| {
             println!("{:?}", trade);
         }
