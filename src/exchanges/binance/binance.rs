@@ -22,42 +22,78 @@ fn normalize_binance_response(raw: BinanceRawResponse) -> NormalizedResponse {
 pub async fn binance_stream(tx: Arc<Sender<NormalizedResponse>>) -> Result<()> {
     let url = "wss://data-stream.binance.vision:443/ws";
 
-    println!("connecting to {url}");
-    let (ws_stream, _) = connect_async(url).await?;
-    println!("connected to Binance");
+    loop {
+        println!("connecting to {url}");
+        let connection = connect_async(url).await;
+        let (ws_stream, _) = match connection {
+            Ok(success) => {
+                println!("connected successfully");
+                success
+            }
+            Err(err) => {
+                eprint!("connection failed: {}", err);
 
-    let (mut write, mut read) = ws_stream.split();
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-    let subscribe_msg = SubscribeMessage {
-        method: "SUBSCRIBE".to_string(),
-        params: vec![
-            "btcusdt@trade".to_string(),
-            "ethusdt@trade".to_string(),
-            "solusdt@trade".to_string(),
-        ],
-        id: 1,
-    };
+                continue;
+            }
+        };
 
-	let json_message = serde_json::to_string(&subscribe_msg)?;
-    write.send(Message::Text(json_message.into())).await?;
+        let (mut write, mut read) = ws_stream.split();
 
-    while let Some(message) = read.next().await {
-        let message = message?;
+        let subscribe_msg = SubscribeMessage {
+            method: "SUBSCRIBE".to_string(),
+            params: vec![
+                "btcusdt@trade".to_string(),
+                "ethusdt@trade".to_string(),
+                "solusdt@trade".to_string(),
+            ],
+            id: 1,
+        };
 
-        if message.is_text() {
-            let text = message.to_text()?;
-            let raw: BinanceRawResponse = match serde_json::from_str(text) {
-                Ok(r) => r,
-                Err(_) => {
-                    println!("skiping non ticker message: {text}");
-                    continue;
-                }
-            };
-            let normalized_response = normalize_binance_response(raw);
-
-            let _ = tx.send(normalized_response);
+        let json_message = serde_json::to_string(&subscribe_msg)?;
+        if let Err(err) = write.send(Message::Text(json_message.into())).await {
+            eprintln!("failed to subscribe: {}", err);
+            continue;
         }
-    }
+        println!("subscribed successfully");
 
-    Ok(())
+        while let Some(message) = read.next().await {
+            match message {
+                Ok(Message::Text(text)) => {
+                    let parsed = serde_json::from_str::<BinanceRawResponse>(&text);
+
+                    match parsed {
+                        Ok(wrapper) => {
+                            let normalized_response = normalize_binance_response(wrapper);
+
+                            let _ = tx.send(normalized_response);
+                        }
+
+                        Err(err) => {
+                            eprintln!("parse error: {}", err);
+                        }
+                    }
+                }
+
+                Ok(Message::Close(_)) => {
+                    println!("websocket closed. reconnecting...");
+
+                    break;
+                }
+
+                Ok(_) => {}
+
+                Err(err) => {
+                    eprintln!("websocket error: {}", err);
+
+                    break;
+                }
+            }
+        }
+
+        println!("reconnecting in 5 seconds");
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    }
 }
