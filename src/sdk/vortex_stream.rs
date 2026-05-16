@@ -1,18 +1,36 @@
 use crate::{
     core::{
+        engine::start_engine,
         subscription_manager::SubscriptionManager,
-        types::{Exchange, TradeCallback},
+        types::{Exchange, ExchangeCommand, TradeCallback},
     },
-    exchanges::{binance::stream::binance_stream, coinbase::stream::coinbase_stream},
+    exchanges::{binance::adapter::BinanceAdapter, coinbase::adapter::CoinbaseAdapter},
     models::normalized::NormalizedResponse,
 };
-use std::sync::Arc;
-use tokio::sync::broadcast;
+
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::{broadcast, mpsc};
 
 /// Main SDK entrypoint for realtime
 /// market data streaming.
 pub struct VortexStream {
+    //
+    // subscription manager
+    //
     pub manager: SubscriptionManager,
+    //
+    // runtime command channels
+    //
+    pub command_senders: HashMap<Exchange, mpsc::Sender<ExchangeCommand>>,
+
+    pub command_receivers: HashMap<Exchange, mpsc::Receiver<ExchangeCommand>>,
+
+    //
+    // enabled exchanges
+    //
+    pub exchanges: Vec<Exchange>,
+
+    pub started: bool,
 }
 
 impl VortexStream {
@@ -21,42 +39,99 @@ impl VortexStream {
     pub fn new(exchanges: Vec<Exchange>) -> Self {
         let (tx, _) = broadcast::channel::<NormalizedResponse>(100);
         let tx = Arc::new(tx);
+        let mut command_senders = HashMap::new();
+        let mut command_receivers = HashMap::new();
 
-        for exchange in exchanges {
+        //
+        // create runtime channels only
+        //
+        for exchange in &exchanges {
+            let (cmd_tx, cmd_rx) = mpsc::channel::<ExchangeCommand>(100);
+            command_senders.insert(exchange.clone(), cmd_tx);
+            command_receivers.insert(exchange.clone(), cmd_rx);
+        }
+
+        let manager = SubscriptionManager::new(tx);
+
+        Self {
+            manager,
+            command_senders,
+            command_receivers,
+            exchanges,
+            started: false,
+        }
+    }
+
+    //
+    // runtime startup
+    //
+    pub async fn start(&mut self) {
+        if self.started {
+            return;
+        }
+        self.started = true;
+        for exchange in &self.exchanges {
+            let cmd_rx = self.command_receivers.remove(exchange).unwrap();
+
+            //
+            // replace sender
+            //
             match exchange {
                 Exchange::Binance => {
-                    let binance_tx = tx.clone();
+                    let engine_tx = self.manager.tx.clone();
 
                     tokio::spawn(async move {
-                        if let Err(err) = binance_stream(binance_tx).await {
-                            eprintln!("binance stream error: {}", err);
+                        if let Err(err) = start_engine(BinanceAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("binance engine error: {}", err);
                         }
                     });
                 }
 
                 Exchange::Coinbase => {
-                    let coinbase_tx = tx.clone();
+                    let engine_tx = self.manager.tx.clone();
 
                     tokio::spawn(async move {
-                        if let Err(err) = coinbase_stream(coinbase_tx).await {
-                            eprintln!("coinbase stream error: {}", err);
+                        if let Err(err) = start_engine(CoinbaseAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("coinbase engine error: {}", err);
                         }
                     });
                 }
             }
         }
-
-        let manager = SubscriptionManager::new(tx.clone());
-
-        Self { manager }
     }
 
-    /// Subscribe to realtime trade
-    /// events for a symbol.
-    pub fn trades<F>(&self, symbol: &str, callback: F) -> tokio::task::JoinHandle<()>
+    //
+    // runtime unsubscribe api
+    //
+    pub async fn unsubscribe(&self, exchange: Exchange, symbol: &str) {
+        if let Some(sender) = self.command_senders.get(&exchange) {
+            let _ = sender
+                .send(ExchangeCommand::Unsubscribe(symbol.to_string()))
+                .await;
+        }
+    }
+
+    //
+    // trade callback api
+    //
+    pub async fn trades<F>(
+        &self,
+        exchange: Exchange,
+        symbol: &str,
+        callback: F,
+    ) -> tokio::task::JoinHandle<()>
     where
         F: Fn(NormalizedResponse) + Send + Sync + 'static,
     {
+        //
+        // send runtime subscribe
+        //
+        if let Some(sender) = self.command_senders.get(&exchange) {
+            let _ = sender
+                .send(ExchangeCommand::Subscribe(symbol.to_string()))
+                .await;
+        }
+
         let callback: TradeCallback = Arc::new(callback);
 
         //

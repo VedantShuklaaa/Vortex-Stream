@@ -1,18 +1,43 @@
-use vortex_stream::{VortexStream, Exchange};
+mod server;
+
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use vortex_stream::{Exchange, VortexStream};
+use server::ws::websocket_router;
 
 #[tokio::main]
 async fn main() {
-
-    let stream = VortexStream::new(vec![
+    //
+    // create shared realtime engine
+    //
+    let stream = Arc::new(Mutex::new(VortexStream::new(vec![
+        Exchange::Binance,
         Exchange::Coinbase,
-    ]);
+    ])));
 
-    stream.trades(
-        "SOLUSD",
-        |trade| {
-            println!("{:?}", trade);
-        }
-    );
+    //
+    // start exchange engines
+    //
+    {
+        let mut locked = stream.lock().await;
 
-    loop {}
+        locked.start().await;
+    }
+
+    //
+    // create axum app
+    //
+    let app = websocket_router(stream.clone());
+
+    //
+    // tcp listener
+    //
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+
+    println!("ws server running on 8080");
+
+    //
+    // start server
+    //
+    axum::serve(listener, app).await.unwrap();
 }

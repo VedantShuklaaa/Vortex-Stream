@@ -15,10 +15,3 @@ pub struct NormalizedResponse {
 	pub timestamp: u64,
 }
 
-#[derive(Serialize)]
-pub struct SubMessageBinance {
-    pub method: String,
-    pub params: Vec<String>,
-    pub id: u32,
-}
-

@@ -6,7 +6,7 @@ use crate::{
 };
 
 pub struct SubscriptionManager {
-    tx: Arc<broadcast::Sender<NormalizedResponse>>,
+    pub tx: Arc<broadcast::Sender<NormalizedResponse>>,
 }
 
 impl SubscriptionManager {

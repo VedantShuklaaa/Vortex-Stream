@@ -1,3 +1,3 @@
 pub mod model;
-pub mod stream;
 pub mod normalize;
+pub mod adapter;

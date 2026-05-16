@@ -3,14 +3,22 @@ name = "vortex-stream"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.napi]
+name = "vortex-stream"
+
 [dependencies]
 anyhow = "1.0.102"
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["ws"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 future-utils = "0.12.1"
 futures-util = "0.3.32"
+napi = { version = "3.9.0", features = ["tokio_rt"] }
+napi-derive = "3.5.6"
 rustls = { version = "0.23.40", features = ["ring"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.52.3", features = ["full"] }
 tokio-tungstenite = { version = "0.29.0", features = ["native-tls"] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]

@@ -8,11 +8,12 @@ async fn main() {
     ]);
 
     stream.trades(
+        Exchange::Binance,
         "BTCUSDT",
         |trade| {
             println!("{:?}", trade);
         }
-    );
+    ).await;
 
     loop {}
 }

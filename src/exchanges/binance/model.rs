@@ -29,3 +29,12 @@ pub struct BinanceRawResponse {
     #[serde(rename = "M")]
     pub ignore: bool,
 }
+
+
+#[derive(Serialize)]
+pub struct SubMessageBinance {
+    pub method: String,
+    pub params: Vec<String>,
+    pub id: u32,
+}
+

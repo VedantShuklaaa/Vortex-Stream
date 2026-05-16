@@ -1,15 +1,19 @@
+use crate::models::normalized::NormalizedResponse;
 use std::sync::Arc;
-use crate::{
-	models::normalized::{NormalizedResponse},
-};
 
 pub type TradeCallback = Arc<dyn Fn(NormalizedResponse) + Send + Sync>;
 
 //
 // exchange selector enum
 //
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Exchange {
     Binance,
     Coinbase,
+}
+
+#[derive(Debug, Clone)]
+pub enum ExchangeCommand {
+    Subscribe(String),
+    Unsubscribe(String),
 }

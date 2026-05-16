@@ -1,0 +1,134 @@
+use anyhow::Result;
+use futures_util::{SinkExt, StreamExt};
+use std::{collections::HashSet, sync::Arc};
+use tokio::sync::{broadcast::Sender, mpsc};
+use tokio_tungstenite::{connect_async, tungstenite::Message};
+
+use crate::{
+    core::{adapter::ExchangeAdapter, types::ExchangeCommand},
+    models::normalized::NormalizedResponse,
+};
+
+pub async fn start_engine<A>(
+    adapter: A,
+    tx: Arc<Sender<NormalizedResponse>>,
+    mut cmd_rx: mpsc::Receiver<ExchangeCommand>,
+) -> Result<()>
+where
+    A: ExchangeAdapter,
+{
+    //
+    // runtime subscription state
+    //
+    let mut active_symbols = HashSet::<String>::new();
+
+    //
+    // default symbols
+    //
+    for symbol in adapter.default_symbols() {
+        active_symbols.insert(symbol);
+    }
+
+    loop {
+        let url = adapter.websocket_url();
+        println!("connecting to {}", url);
+
+        let connection = connect_async(url).await;
+
+        let (ws_stream, _) = match connection {
+            Ok(success) => {
+                println!("connected successfully");
+                success
+            }
+
+            Err(err) => {
+                eprintln!("connection failed: {}", err);
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+        };
+
+        let (mut write, mut read) = ws_stream.split();
+
+        //
+        // restore subscriptions
+        //
+        for symbol in &active_symbols {
+            let payload = adapter.subscribe_message(symbol)?;
+
+            if let Err(err) = write.send(Message::Text(payload.into())).await {
+                eprintln!("failed to subscribe: {}", err);
+            }
+        }
+        println!("subscriptions restored");
+
+        loop {
+            tokio::select! {
+
+                //
+                // websocket messages
+                //
+                Some(message) = read.next() => {
+                    match message {
+                        Ok(Message::Text(text)) => {
+                            if let Some(normalized) = adapter.parse_message(&text) {
+                                let _ = tx.send(normalized);
+                            }
+                        }
+
+                        Ok(Message::Close(_)) => {println!("websocket closed");
+                            break;
+                        }
+
+                        Ok(_) => {}
+
+                        Err(err) => {
+                            eprintln!("websocket error: {}", err);
+                            break;
+                        }
+                    }
+                }
+
+                //
+                // runtime commands
+                //
+                Some(command) = cmd_rx.recv() => {
+                    match command {
+                        ExchangeCommand::Subscribe(symbol) => {
+                            if active_symbols.contains(&symbol) {
+                                continue;
+                            }
+
+                            active_symbols.insert(
+                                symbol.clone()
+                            );
+
+                            let payload = adapter.subscribe_message(&symbol)?;
+
+                            if let Err(err) = write.send(Message::Text(payload.into())).await {
+                                eprintln!("subscribe error: {}", err);
+                            }
+
+                            println!("subscribed: {}",symbol);
+                        }
+
+                        ExchangeCommand::Unsubscribe(symbol) => {
+                            active_symbols.remove(&symbol);
+
+                            let payload =adapter.unsubscribe_message(&symbol)?;
+
+                            if let Err(err) =write.send(Message::Text(payload.into())).await {
+                                eprintln!("unsubscribe error: {}", err);
+                            }
+
+                            println!("unsubscribed: {}", symbol);
+                        }
+                    }
+                }
+            }
+        }
+
+        println!("reconnecting in 5 seconds");
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+    }
+}

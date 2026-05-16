@@ -1,0 +1,55 @@
+use anyhow::Result;
+
+use crate::{
+    core::adapter::ExchangeAdapter,
+    exchanges::coinbase::{
+        model::{CoinbaseRawResponse, SubMessageCoinbase},
+        normalize::normalize_coinbase_response,
+    },
+    models::normalized::NormalizedResponse,
+};
+
+pub struct CoinbaseAdapter;
+
+impl ExchangeAdapter for CoinbaseAdapter {
+    fn websocket_url(&self) -> &'static str {
+        "wss://ws-feed.exchange.coinbase.com"
+    }
+
+    fn default_symbols(&self) -> Vec<String> {
+        vec![
+            "BTC-USD".to_string(),
+            "ETH-USD".to_string(),
+            "SOL-USD".to_string(),
+        ]
+    }
+
+    fn subscribe_message(&self, symbol: &str) -> Result<String> {
+        let payload = SubMessageCoinbase {
+            r#type: "subscribe".to_string(),
+            product_ids: vec![symbol.to_string()],
+            channels: vec!["ticker".to_string()],
+        };
+
+        Ok(serde_json::to_string(&payload)?)
+    }
+
+	fn unsubscribe_message(&self, symbol: &str) -> Result<String> {
+		let payload = SubMessageCoinbase {
+            r#type: "unsubscribe".to_string(),
+            product_ids: vec![symbol.to_string()],
+            channels: vec!["ticker".to_string()],
+        };
+
+        Ok(serde_json::to_string(&payload)?)
+	}
+
+	fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
+		if !text.contains("\"type\":\"ticker\"") {
+			return None;
+		}
+
+		let parsed = serde_json::from_str::<CoinbaseRawResponse>(text).ok()?;
+		Some(normalize_coinbase_response(parsed))
+	}
+}
