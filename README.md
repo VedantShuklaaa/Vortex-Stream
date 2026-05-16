@@ -22,8 +22,8 @@ Vortex Stream provides unified realtime market data streams across multiple cryp
 # Installation
 
 ```bash
-npm install vortex-stream;
-bun add vortex-stream;
+npm install vortex-stream
+bun add vortex-stream
 ```
 
 ***
