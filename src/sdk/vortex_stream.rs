@@ -4,7 +4,10 @@ use crate::{
         subscription_manager::SubscriptionManager,
         types::{Exchange, ExchangeCommand, TradeCallback},
     },
-    exchanges::{binance::adapter::BinanceAdapter, coinbase::adapter::CoinbaseAdapter},
+    exchanges::{
+        binance::adapter::BinanceAdapter, coinbase::adapter::CoinbaseAdapter,
+        okx::adapter::OkxAdapter,
+    },
     models::normalized::NormalizedResponse,
 };
 
@@ -14,22 +17,10 @@ use tokio::sync::{broadcast, mpsc};
 /// Main SDK entrypoint for realtime
 /// market data streaming.
 pub struct VortexStream {
-    //
-    // subscription manager
-    //
     pub manager: SubscriptionManager,
-    //
-    // runtime command channels
-    //
     pub command_senders: HashMap<Exchange, mpsc::Sender<ExchangeCommand>>,
-
     pub command_receivers: HashMap<Exchange, mpsc::Receiver<ExchangeCommand>>,
-
-    //
-    // enabled exchanges
-    //
     pub exchanges: Vec<Exchange>,
-
     pub started: bool,
 }
 
@@ -96,6 +87,16 @@ impl VortexStream {
                         }
                     });
                 }
+
+                Exchange::Okx => {
+                    let engine_tx = self.manager.tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = start_engine(OkxAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("okx engine error: {}", err);
+                        }
+                    });
+                }
             }
         }
     }
@@ -133,10 +134,30 @@ impl VortexStream {
         }
 
         let callback: TradeCallback = Arc::new(callback);
+        let normalized_symbol = match exchange {
+            Exchange::Okx => {
+                if symbol.ends_with("USDT") {
+                    let base = symbol.trim_end_matches("USDT");
+                    format!("{}-USDT", base)
+                } else {
+                    symbol.to_string()
+                }
+            }
+
+            Exchange::Coinbase => {
+                if symbol.ends_with("USDT") {
+                    let base = symbol.trim_end_matches("USDT");
+                    format!("{}-USD", base)
+                } else {
+                    symbol.to_string()
+                }
+            }
+            _ => symbol.to_string(),
+        };
 
         //
         // delegate to manager
         //
-        self.manager.subscribe(symbol.to_string(), callback)
+        self.manager.subscribe(normalized_symbol, callback)
     }
 }

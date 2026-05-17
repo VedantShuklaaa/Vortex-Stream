@@ -28,7 +28,7 @@ impl JsVortexStream {
         //
         // create vortex engine
         //
-        let stream = VortexStream::new(vec![Exchange::Binance, Exchange::Coinbase]);
+        let stream = VortexStream::new(vec![Exchange::Binance, Exchange::Coinbase, Exchange::Okx]);
         let inner = Arc::new(Mutex::new(stream));
 
         //
@@ -60,6 +60,7 @@ impl JsVortexStream {
         let exchange = match exchange.as_str() {
             "binance" => Exchange::Binance,
             "coinbase" => Exchange::Coinbase,
+            "okx" => Exchange::Okx,
 
             _ => {
                 println!("unsupported exchange");

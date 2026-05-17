@@ -24,6 +24,10 @@ impl ExchangeAdapter for BinanceAdapter {
         ]
     }
 
+    fn normalize_symbol(&self, symbol: &str) -> String {
+        symbol.to_string()
+    }
+
     fn subscribe_message(&self, symbol: &str) -> Result<String> {
         let payload = SubMessageBinance {
             method: "SUBSCRIBE".to_string(),
@@ -34,15 +38,15 @@ impl ExchangeAdapter for BinanceAdapter {
         Ok(serde_json::to_string(&payload)?)
     }
 
-	fn unsubscribe_message(&self, symbol: &str) -> Result<String> {
-		let payload = SubMessageBinance {
+    fn unsubscribe_message(&self, symbol: &str) -> Result<String> {
+        let payload = SubMessageBinance {
             method: "UNSUBSCRIBE".to_string(),
             params: vec![format!("{}@trade", symbol.to_lowercase())],
             id: 1,
         };
 
-		Ok(serde_json::to_string(&payload)?)
-	}
+        Ok(serde_json::to_string(&payload)?)
+    }
 
     fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
         if !text.contains("\"e\"") {
@@ -50,6 +54,6 @@ impl ExchangeAdapter for BinanceAdapter {
         }
         let parsed = serde_json::from_str::<BinanceRawResponse>(text).ok()?;
 
-		Some(normalize_binance_response(parsed))
+        Some(normalize_binance_response(parsed))
     }
 }

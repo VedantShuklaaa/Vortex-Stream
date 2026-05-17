@@ -24,6 +24,16 @@ impl ExchangeAdapter for CoinbaseAdapter {
         ]
     }
 
+    fn normalize_symbol(&self, symbol: &str) -> String {
+        if symbol.ends_with("USDT") {
+            let base = symbol.trim_end_matches("USDT");
+
+            format!("{}-USD", base)
+        } else {
+            symbol.to_string()
+        }
+    }
+
     fn subscribe_message(&self, symbol: &str) -> Result<String> {
         let payload = SubMessageCoinbase {
             r#type: "subscribe".to_string(),
@@ -34,22 +44,22 @@ impl ExchangeAdapter for CoinbaseAdapter {
         Ok(serde_json::to_string(&payload)?)
     }
 
-	fn unsubscribe_message(&self, symbol: &str) -> Result<String> {
-		let payload = SubMessageCoinbase {
+    fn unsubscribe_message(&self, symbol: &str) -> Result<String> {
+        let payload = SubMessageCoinbase {
             r#type: "unsubscribe".to_string(),
             product_ids: vec![symbol.to_string()],
             channels: vec!["ticker".to_string()],
         };
 
         Ok(serde_json::to_string(&payload)?)
-	}
+    }
 
-	fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
-		if !text.contains("\"type\":\"ticker\"") {
-			return None;
-		}
+    fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
+        if !text.contains("\"type\":\"ticker\"") {
+            return None;
+        }
 
-		let parsed = serde_json::from_str::<CoinbaseRawResponse>(text).ok()?;
-		Some(normalize_coinbase_response(parsed))
-	}
+        let parsed = serde_json::from_str::<CoinbaseRawResponse>(text).ok()?;
+        Some(normalize_coinbase_response(parsed))
+    }
 }

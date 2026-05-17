@@ -13,6 +13,11 @@ pub trait ExchangeAdapter {
 	//
     fn default_symbols(&self) -> Vec<String>;
 
+    fn normalize_symbol(
+        &self,
+        symbol: &str,
+    ) -> String;
+    
     //
     // build subscribe payload
     //

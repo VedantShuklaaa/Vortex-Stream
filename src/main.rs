@@ -1,9 +1,9 @@
 mod server;
 
+use server::ws::websocket_router;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use vortex_stream::{Exchange, VortexStream};
-use server::ws::websocket_router;
 
 #[tokio::main]
 async fn main() {
@@ -13,6 +13,7 @@ async fn main() {
     let stream = Arc::new(Mutex::new(VortexStream::new(vec![
         Exchange::Binance,
         Exchange::Coinbase,
+        Exchange::Okx,
     ])));
 
     //
@@ -20,7 +21,6 @@ async fn main() {
     //
     {
         let mut locked = stream.lock().await;
-
         locked.start().await;
     }
 
@@ -33,11 +33,6 @@ async fn main() {
     // tcp listener
     //
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-
     println!("ws server running on 8080");
-
-    //
-    // start server
-    //
     axum::serve(listener, app).await.unwrap();
 }

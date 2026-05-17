@@ -1,19 +1,15 @@
-use vortex_stream::{VortexStream, Exchange};
+use vortex_stream::{Exchange, VortexStream};
 
 #[tokio::main]
 async fn main() {
+    let mut stream = VortexStream::new(vec![Exchange::Okx]);
+    stream.start().await;
 
-    let stream = VortexStream::new(vec![
-        Exchange::Binance
-    ]);
-
-    stream.trades(
-        Exchange::Binance,
-        "BTCUSDT",
-        |trade| {
+    let _handle = stream
+        .trades(Exchange::Okx, "BTCUSDT", |trade| {
             println!("{:?}", trade);
-        }
-    ).await;
+        })
+        .await;
 
     loop {}
 }
