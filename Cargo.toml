@@ -10,6 +10,7 @@ name = "vortex-stream"
 anyhow = "1.0.102"
 axum = { version = "0.8.9", features = ["ws"] }
 chrono = { version = "0.4.44", features = ["serde"] }
+flate2 = "1.1.9"
 future-utils = "0.12.1"
 futures-util = "0.3.32"
 napi = { version = "3.9.0", features = ["tokio_rt"] }

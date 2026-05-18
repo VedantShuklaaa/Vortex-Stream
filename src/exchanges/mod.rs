@@ -3,3 +3,6 @@ pub mod coinbase;
 pub mod okx;
 pub mod bybit;
 pub mod kraken;
+pub mod bitget;
+pub mod bitfinex;
+pub mod crypto_com;
