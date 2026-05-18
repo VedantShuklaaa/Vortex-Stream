@@ -31,5 +31,5 @@ pub trait ExchangeAdapter {
     //
     // parse + normalize exchange payload
     //
-    fn parse_message(&self, text: &str) -> Option<NormalizedResponse>;
+    fn parse_message(&self, text: &str) -> Vec<NormalizedResponse>;
 }

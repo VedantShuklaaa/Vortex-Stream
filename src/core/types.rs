@@ -11,6 +11,8 @@ pub enum Exchange {
     Binance,
     Coinbase,
     Okx,
+    Bybit,
+    Kraken
 }
 
 #[derive(Debug, Clone)]

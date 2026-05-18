@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use anyhow::{Result};
 
 use crate::{
     core::adapter::ExchangeAdapter,
@@ -48,12 +48,18 @@ impl ExchangeAdapter for BinanceAdapter {
         Ok(serde_json::to_string(&payload)?)
     }
 
-    fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
+    fn parse_message(&self, text: &str) -> Vec<NormalizedResponse> {
         if !text.contains("\"e\"") {
-            return None;
+            return vec![];
         }
-        let parsed = serde_json::from_str::<BinanceRawResponse>(text).ok()?;
 
-        Some(normalize_binance_response(parsed))
+        let parsed = serde_json::from_str::<BinanceRawResponse>(text);
+        match parsed {
+            Ok(payload) => {
+                vec![normalize_binance_response(payload)]
+            }
+
+            Err(_) => vec![],
+        }
     }
 }

@@ -65,67 +65,68 @@ where
         loop {
             tokio::select! {
 
-                        //
-                        // websocket messages
-                        //
-                        Some(message) = read.next() => {
-                            match message {
-                                Ok(Message::Text(text)) => {
-                                    if let Some(parsed) = adapter.parse_message(&text.to_string()) {
-                                        let _ = tx.send(parsed);
-                                    }
+                //
+                // websocket messages
+                //
+                Some(message) = read.next() => {
+                    match message {
+                        Ok(Message::Text(text)) => {
+                            let parsed = adapter.parse_message(&text.to_string());
+                                for trade in parsed {
+                                    let _ = tx.send(trade);
                                 }
-
-                                Ok(Message::Close(_)) => {println!("websocket closed");
-                                    break;
-                                }
-
-                                Ok(_) => {}
-
-                                Err(err) => {
-                                    eprintln!("websocket error: {}", err);
-                                    break;
-                                }
-                            }
                         }
 
-                        //
-                        // runtime commands
-                        //
-                        Some(command) = cmd_rx.recv() => {
-                            match command {
-                                ExchangeCommand::Subscribe(symbol) => {
-                                    if active_symbols.contains(&symbol) {
-                                        continue;
-                                    }
+                        Ok(Message::Close(_)) => {println!("websocket closed");
+                            break;
+                        }
 
-                                    active_symbols.insert(
-                                        symbol.clone()
-                                    );
+                        Ok(_) => {}
 
-                                    let payload = adapter.subscribe_message(&symbol)?;
-
-                                    if let Err(err) = write.send(Message::Text(payload.into())).await {
-                                        eprintln!("subscribe error: {}", err);
-                                    }
-
-                                    println!("subscribed: {}",symbol);
-                                }
-
-                                ExchangeCommand::Unsubscribe(symbol) => {
-                                    active_symbols.remove(&symbol);
-
-                                    let payload =adapter.unsubscribe_message(&symbol)?;
-
-                                    if let Err(err) =write.send(Message::Text(payload.into())).await {
-                                        eprintln!("unsubscribe error: {}", err);
-                                    }
-
-                                    println!("unsubscribed: {}", symbol);
-                                }
-                            }
+                        Err(err) => {
+                            eprintln!("websocket error: {}", err);
+                            break;
                         }
                     }
+                }
+
+                //
+                // runtime commands
+                //
+                Some(command) = cmd_rx.recv() => {
+                    match command {
+                        ExchangeCommand::Subscribe(symbol) => {
+                            if active_symbols.contains(&symbol) {
+                                continue;
+                            }
+
+                            active_symbols.insert(
+                                symbol.clone()
+                            );
+
+                            let payload = adapter.subscribe_message(&symbol)?;
+
+                            if let Err(err) = write.send(Message::Text(payload.into())).await {
+                                eprintln!("subscribe error: {}", err);
+                            }
+
+                            println!("subscribed: {}",symbol);
+                        }
+
+                        ExchangeCommand::Unsubscribe(symbol) => {
+                            active_symbols.remove(&symbol);
+
+                            let payload = adapter.unsubscribe_message(&symbol)?;
+
+                            if let Err(err) =write.send(Message::Text(payload.into())).await {
+                                eprintln!("unsubscribe error: {}", err);
+                            }
+
+                            println!("unsubscribed: {}", symbol);
+                        }
+                    }
+                }
+            }
         }
 
         println!("reconnecting in 5 seconds");

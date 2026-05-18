@@ -64,20 +64,20 @@ impl ExchangeAdapter for OkxAdapter {
         Ok(serde_json::to_string(&payload)?)
     }
 
-    fn parse_message(&self, text: &str) -> Option<NormalizedResponse> {
+    fn parse_message(&self, text: &str) -> Vec<NormalizedResponse> {
         let parsed = serde_json::from_str::<OkxRawResponse>(text);
         match parsed {
             Ok(payload) => {
                 if payload.data.is_empty() {
-                    return None;
+                    return vec![];
                 }
                 let normalized = normalize_okx_response(payload);
-                Some(normalized)
+                vec![normalized]
             }
 
             Err(err) => {
                 println!("parse error: {}", err);
-                None
+                vec![]
             }
         }
     }

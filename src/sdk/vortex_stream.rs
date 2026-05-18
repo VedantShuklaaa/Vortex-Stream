@@ -5,8 +5,7 @@ use crate::{
         types::{Exchange, ExchangeCommand, TradeCallback},
     },
     exchanges::{
-        binance::adapter::BinanceAdapter, coinbase::adapter::CoinbaseAdapter,
-        okx::adapter::OkxAdapter,
+        binance::adapter::BinanceAdapter, bybit::adapter::BybitAdapter, coinbase::adapter::CoinbaseAdapter, kraken::adapter::KrakenAdapter, okx::adapter::OkxAdapter
     },
     models::normalized::NormalizedResponse,
 };
@@ -94,6 +93,26 @@ impl VortexStream {
                     tokio::spawn(async move {
                         if let Err(err) = start_engine(OkxAdapter, engine_tx, cmd_rx).await {
                             eprintln!("okx engine error: {}", err);
+                        }
+                    });
+                }
+
+                Exchange::Bybit => {
+                    let engine_tx = self.manager.tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = start_engine(BybitAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("bybit engine error: {}", err);
+                        }
+                    });
+                }
+
+                Exchange::Kraken => {
+                    let engine_tx = self.manager.tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = start_engine(KrakenAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("kraken engine error: {}", err);
                         }
                     });
                 }
