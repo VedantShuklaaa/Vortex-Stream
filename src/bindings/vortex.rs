@@ -37,6 +37,8 @@ impl JsVortexStream {
             Exchange::Bitget,
             Exchange::Bitfinex,
             Exchange::CryptoCom,
+            Exchange::Htx,
+            Exchange::Bitstamp,
         ]);
         let inner = Arc::new(Mutex::new(stream));
 
@@ -75,6 +77,8 @@ impl JsVortexStream {
             "bitget" => Exchange::Bitget,
             "bitfinex" => Exchange::Bitfinex,
             "crypto_com" => Exchange::CryptoCom,
+            "htx" => Exchange::Htx,
+            "bitstamp" => Exchange::Bitstamp,
 
             _ => {
                 println!("unsupported exchange");

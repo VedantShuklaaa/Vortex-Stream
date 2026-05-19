@@ -5,7 +5,7 @@ use crate::{
         types::{Exchange, ExchangeCommand, TradeCallback},
     },
     exchanges::{
-        binance::adapter::BinanceAdapter, bitfinex::adapter::BitfinexAdapter, bitget::adapter::BitgetAdapter, bybit::adapter::BybitAdapter, coinbase::adapter::CoinbaseAdapter, crypto_com::adapter::CryptoComAdapter, kraken::adapter::KrakenAdapter, okx::adapter::OkxAdapter
+        binance::adapter::BinanceAdapter, bitfinex::adapter::BitfinexAdapter, bitget::adapter::BitgetAdapter, bitstamp::adapter::BitstampAdapter, bybit::adapter::BybitAdapter, coinbase::adapter::CoinbaseAdapter, crypto_com::adapter::CryptoComAdapter, htx::adapter::HtxAdapter, kraken::adapter::KrakenAdapter, okx::adapter::OkxAdapter
     },
     models::normalized::NormalizedResponse,
 };
@@ -143,6 +143,26 @@ impl VortexStream {
                     tokio::spawn(async move {
                         if let Err(err) = start_engine(CryptoComAdapter, engine_tx, cmd_rx).await {
                             eprintln!("cryptocom engine error: {}", err);
+                        }
+                    });
+                }
+
+                Exchange::Htx => {
+                    let engine_tx = self.manager.tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = start_engine(HtxAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("htx engine error: {}", err);
+                        }
+                    });
+                }
+
+                Exchange::Bitstamp => {
+                    let engine_tx = self.manager.tx.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(err) = start_engine(BitstampAdapter, engine_tx, cmd_rx).await {
+                            eprintln!("bitstamp engine error: {}", err);
                         }
                     });
                 }

@@ -6,3 +6,5 @@ pub mod kraken;
 pub mod bitget;
 pub mod bitfinex;
 pub mod crypto_com;
+pub mod htx;
+pub mod bitstamp;

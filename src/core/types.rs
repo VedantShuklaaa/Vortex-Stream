@@ -16,6 +16,8 @@ pub enum Exchange {
     Bitget,
     Bitfinex,
     CryptoCom,
+    Htx,
+    Bitstamp,
 }
 
 #[derive(Debug, Clone)]

@@ -14,6 +14,11 @@ async fn main() {
         Exchange::Binance,
         Exchange::Coinbase,
         Exchange::Okx,
+        Exchange::Kraken,
+        Exchange::Bitfinex,
+        Exchange::Bybit,
+        Exchange::CryptoCom,
+        Exchange::Bitget,
     ])));
 
     //
