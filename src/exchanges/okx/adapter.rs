@@ -26,9 +26,8 @@ impl ExchangeAdapter for OkxAdapter {
     }
 
     fn normalize_symbol(&self, symbol: &str) -> String {
-        if symbol.ends_with("USDT") {
+        if symbol.ends_with("USDT") && !symbol.contains('-') {
             let base = symbol.trim_end_matches("USDT");
-
             format!("{}-USDT", base)
         } else {
             symbol.to_string()

@@ -1,20 +1,24 @@
 {
-  "name": "vortex-stream",
-  "version": "0.1.0-beta.1",
+  "name": "vortex-stream-sdk",
+  "version": "1.0.0",
   "main": "index.js",
   "types": "index.d.ts",
   "license": "MIT",
-
   "scripts": {
     "build": "napi build --platform",
     "prepublishOnly": "npm run build"
   },
-
   "napi": {
     "name": "vortex-stream"
   },
-
   "devDependencies": {
     "@napi-rs/cli": "^3.0.0"
-  }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "*.node",
+    "README.md",
+    "package.json"
+  ]
 }

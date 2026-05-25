@@ -18,9 +18,9 @@ impl ExchangeAdapter for BybitAdapter {
 
     fn default_symbols(&self) -> Vec<String> {
         vec![
-            "publicTrade.BTCUSDT".to_string(),
-            "publicTrade.ETHUSDT".to_string(),
-            "publicTrade.SOLUSDT".to_string(),
+            "BTCUSDT".to_string(),
+            "ETHUSDT".to_string(),
+            "SOLUSDT".to_string(),
         ]
     }
 

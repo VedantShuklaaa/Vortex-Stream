@@ -67,17 +67,20 @@ where
 
         loop {
             tokio::select! {
-
-                //
-                // websocket messages
-                //
                 Some(message) = read.next() => {
                     match message {
                         Ok(Message::Text(text)) => {
-                            let parsed = adapter.parse_message(&text.to_string());
-                                for trade in parsed {
-                                    let _ = tx.send(trade);
-                                }
+                            let parsed = adapter.parse_message(&text);
+
+                            if parsed.is_empty() {
+                                continue
+                            }
+                            for trade in parsed {
+                                if let Err(err) = tx.send(trade.clone()) {
+                                eprintln!("broadcast failed: {}", err);
+                            } else {
+                                println!("broadcasted: {:?}", trade);
+                            }}
                         }
 
                         Ok(Message::Binary(bin)) => {

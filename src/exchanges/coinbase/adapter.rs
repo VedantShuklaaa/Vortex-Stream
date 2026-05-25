@@ -55,17 +55,29 @@ impl ExchangeAdapter for CoinbaseAdapter {
     }
 
     fn parse_message(&self, text: &str) -> Vec<NormalizedResponse> {
-        if !text.contains("\"type\":\"ticker\"") {
+        let value: serde_json::Value = match serde_json::from_str(text) {
+            Ok(v) => v,
+            Err(err) => {
+                println!("json parse error: {}", err);
+                return vec![];
+            }
+        };
+
+        if value["type"] != "ticker" {
             return vec![];
         }
 
         let parsed = serde_json::from_str::<CoinbaseRawResponse>(text);
+
         match parsed {
             Ok(payload) => {
-                vec![normalize_coinbase_response(payload)]
+                let normalized = normalize_coinbase_response(payload);
+                vec![normalized]
             }
-
-            Err(_) => vec![],
+            Err(err) => {
+                println!("parse error: {:?}", err);
+                vec![]
+            }
         }
     }
 }

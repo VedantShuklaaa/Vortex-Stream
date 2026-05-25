@@ -22,8 +22,8 @@ Vortex Stream provides unified realtime market data streams across multiple cryp
 # Installation
 
 ```bash
-npm install vortex-stream
-bun add vortex-stream
+npm install vortex-stream-sdk
+bun add vortex-stream-sdk
 ```
 
 ***
@@ -31,7 +31,7 @@ bun add vortex-stream
 # Quick Start
 
 ```js
-const { VortexStream } = require("vortex-stream");
+const { VortexStream } = require("vortex-stream-sdk");
 
 const stream = new VortexStream();
 
@@ -70,6 +70,14 @@ setInterval(() => {}, 1000);
 
 * Binance
 * Coinbase
+* Bitfinex
+* Bitget
+* Bitstamp
+* Bybit
+* Crypto.com
+* HTX
+* Kraken
+* Okx
 
 ***
 
