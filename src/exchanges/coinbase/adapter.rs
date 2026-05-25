@@ -71,11 +71,11 @@ impl ExchangeAdapter for CoinbaseAdapter {
 
         match parsed {
             Ok(payload) => {
-                let normalized = normalize_coinbase_response(payload);
-                vec![normalized]
+                vec![normalize_coinbase_response(payload)]
             }
+
             Err(err) => {
-                println!("parse error: {:?}", err);
+                eprintln!("parse error: {:?}", err);
                 vec![]
             }
         }

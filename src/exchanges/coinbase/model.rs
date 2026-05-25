@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,7 +46,7 @@ pub struct CoinbaseRawResponse {
     pub side: String,
 
     #[serde(rename = "time")]
-    pub timestamp: String,
+    pub timestamp: DateTime<Utc>,
 
     #[serde(rename = "trade_id")]
     pub trade_id: u64,

@@ -1,7 +1,7 @@
 {
   "name": "vortex-stream-sdk",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "1.0.1",
+  "main": "runtime.js",
   "types": "index.d.ts",
   "license": "MIT",
   "scripts": {
@@ -18,6 +18,7 @@
     "index.js",
     "index.d.ts",
     "*.node",
+    "runtime.js",
     "README.md",
     "package.json"
   ]

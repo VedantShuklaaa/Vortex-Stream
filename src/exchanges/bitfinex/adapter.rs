@@ -1,4 +1,8 @@
 use anyhow::Result;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     core::adapter::ExchangeAdapter,
@@ -9,7 +13,17 @@ use crate::{
     models::normalized::NormalizedResponse,
 };
 
-pub struct BitfinexAdapter;
+pub struct BitfinexAdapter {
+    channels: Arc<Mutex<HashMap<u64, String>>>,
+}
+
+impl BitfinexAdapter {
+    pub fn new() -> Self {
+        Self {
+            channels: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
 
 impl ExchangeAdapter for BitfinexAdapter {
     fn websocket_url(&self) -> &'static str {
@@ -54,14 +68,53 @@ impl ExchangeAdapter for BitfinexAdapter {
     }
 
     fn parse_message(&self, text: &str) -> Vec<NormalizedResponse> {
+        println!("raw: {}", text);
         if text.starts_with('{') {
+            let value: serde_json::Value = match serde_json::from_str(text) {
+                Ok(v) => v,
+                Err(_) => return vec![],
+            };
+
+            if value["event"] == "subscribed" {
+                let chan_id = value["chanId"].as_u64().unwrap();
+
+                let symbol = value["symbol"]
+                    .as_str()
+                    .unwrap()
+                    .replace("t", "")
+                    .replace("USD", "USDT");
+
+                self.channels
+                    .lock()
+                    .unwrap()
+                    .insert(chan_id, symbol.clone());
+
+                println!("[bitfinex] mapped {} -> {}", chan_id, symbol);
+            }
+
             return vec![];
         }
 
         let parsed = serde_json::from_str::<BitfinexRawResponse>(text);
         match parsed {
-            Ok(payload) => normalize_bitfinex_response(payload),
-            Err(_) => vec![]
+            Ok(payload) => {
+                println!("parsed successfully");
+                let channel_id = match &payload {
+                    BitfinexRawResponse::Snapshot(channel_id, _) => *channel_id,
+                    BitfinexRawResponse::Update(channel_id, _, _) => *channel_id,
+                };
+
+                let symbol = self
+                    .channels
+                    .lock()
+                    .unwrap()
+                    .get(&channel_id)
+                    .cloned()
+                    .unwrap_or("UNKNOWN".to_string());
+
+                normalize_bitfinex_response(payload, symbol)
+            }
+            Err(_) => vec![],
         }
     }
 }

@@ -104,6 +104,8 @@ impl JsVortexStream {
 
             locked
                 .trades(exchange, &symbol, move |trade| {
+                    println!("[js-bridge] {} {}", trade.exchange, trade.symbol);
+
                     let payload = serde_json::to_string(&trade).unwrap();
 
                     tsfn.call(payload, ThreadsafeFunctionCallMode::NonBlocking);

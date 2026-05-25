@@ -131,7 +131,7 @@ impl VortexStream {
                     let engine_tx = self.manager.tx.clone();
 
                     tokio::spawn(async move {
-                        if let Err(err) = start_engine(BitfinexAdapter, engine_tx, cmd_rx).await {
+                        if let Err(err) = start_engine(BitfinexAdapter::new(), engine_tx, cmd_rx).await {
                             eprintln!("bitfinex engine error: {}", err);
                         }
                     });
@@ -207,7 +207,7 @@ impl VortexStream {
             Exchange::Okx => {
                 if symbol.ends_with("USDT") {
                     let base = symbol.trim_end_matches("USDT");
-                    format!("{}-USDT", base)
+                    format!("{}/USDT", base)
                 } else {
                     symbol.to_string()
                 }
@@ -216,7 +216,7 @@ impl VortexStream {
             Exchange::Coinbase => {
                 if symbol.ends_with("USDT") {
                     let base = symbol.trim_end_matches("USDT");
-                    format!("{}-USD", base)
+                    format!("{}/USD", base)
                 } else {
                     symbol.to_string()
                 }

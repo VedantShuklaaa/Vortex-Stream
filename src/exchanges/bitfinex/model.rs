@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubMessageBitfinex {
     pub event: String,
@@ -15,8 +14,19 @@ pub type BitfinexTrade = (
     f64, // price
 );
 
-pub type BitfinexRawResponse = (
-    u64, // channel id
-    String, // event type ("te" / "tu")
-    BitfinexTrade,
-);
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum BitfinexRawResponse {
+    // snapshot
+    Snapshot(
+        u64, // channel id
+        Vec<BitfinexTrade>,
+    ),
+
+    // te / tu update
+    Update(
+        u64,    // channel id
+        String, // event type
+        BitfinexTrade,
+    ),
+}

@@ -24,13 +24,6 @@ where
     //
     let mut active_symbols = HashSet::<String>::new();
 
-    //
-    // default symbols
-    //
-    for symbol in adapter.default_symbols() {
-        active_symbols.insert(symbol);
-    }
-
     loop {
         let url = adapter.websocket_url();
         println!("connecting to {}", url);
@@ -76,11 +69,23 @@ where
                                 continue
                             }
                             for trade in parsed {
-                                if let Err(err) = tx.send(trade.clone()) {
-                                eprintln!("broadcast failed: {}", err);
-                            } else {
-                                println!("broadcasted: {:?}", trade);
-                            }}
+                                match tx.send(trade.clone()) {
+                                    Ok(_) => {
+                                        println!(
+                                            "[broadcast] {} {}",
+                                            trade.exchange,
+                                            trade.symbol
+                                        );
+                                    }
+
+                                    Err(err) => {
+                                        eprintln!(
+                                            "broadcast failed: {}",
+                                            err
+                                        );
+                                    }
+                                }
+                            }
                         }
 
                         Ok(Message::Binary(bin)) => {
@@ -105,7 +110,8 @@ where
                             }
                         }
 
-                        Ok(Message::Close(_)) => {println!("websocket closed");
+                        Ok(Message::Close(_)) => {
+                            println!("websocket closed");
                             break;
                         }
 
@@ -117,8 +123,6 @@ where
                         }
                     }
                 }
-
-
 
                 //
                 // runtime commands
