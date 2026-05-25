@@ -29,10 +29,6 @@ where
         // if no subscriptions exist,
         // stop reconnecting entirely
         //
-        if active_symbols.is_empty() {
-            println!("[{}] engine shutdown", adapter.websocket_url());
-            break;
-        }
 
         let url = adapter.websocket_url();
 
@@ -160,22 +156,11 @@ where
 
                             for trade in parsed {
 
-                                match tx.send(trade.clone()) {
-
-                                    Ok(_) => {
-                                        println!(
-                                            "[broadcast] {} {}",
-                                            trade.exchange,
-                                            trade.symbol
-                                        );
-                                    }
-
-                                    Err(err) => {
-                                        eprintln!(
-                                            "broadcast failed: {}",
-                                            err
-                                        );
-                                    }
+                                if let Err(err) = tx.send(trade.clone()) {
+                                    eprintln!(
+                                        "broadcast failed: {}",
+                                        err
+                                    );
                                 }
                             }
                         }
