@@ -30,7 +30,7 @@ where
         // stop reconnecting entirely
         //
         if active_symbols.is_empty() {
-            println!("engine shutdown");
+            println!("[{}] engine shutdown", adapter.websocket_url());
             break;
         }
 
