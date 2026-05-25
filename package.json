@@ -1,6 +1,6 @@
 {
   "name": "vortex-stream-sdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "runtime.js",
   "types": "index.d.ts",
   "license": "MIT",
