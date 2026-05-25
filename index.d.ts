@@ -3,4 +3,5 @@
 export declare class JsVortexStream {
   constructor()
   trades(exchange: string, symbol: string, callback: (arg: string) => void): void
+  disconnect(): void
 }
