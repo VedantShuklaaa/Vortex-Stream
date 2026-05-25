@@ -1,7 +1,7 @@
 use napi::{bindgen_prelude::Function, threadsafe_function::ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use std::sync::Arc;
-use tokio::{runtime::Runtime, sync::Mutex};
+use tokio::{runtime::Runtime, sync::Mutex, task::JoinHandle};
 
 use crate::{Exchange, VortexStream};
 
@@ -9,6 +9,7 @@ use crate::{Exchange, VortexStream};
 pub struct JsVortexStream {
     inner: Arc<Mutex<VortexStream>>,
     runtime: Arc<Runtime>,
+    tasks: Arc<Mutex<Vec<JoinHandle<()>>>>,
 }
 
 #[napi]
@@ -55,6 +56,7 @@ impl JsVortexStream {
         Self {
             inner,
             runtime: Arc::new(runtime),
+            tasks: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -99,20 +101,31 @@ impl JsVortexStream {
         //
         // async subscribe task
         //
-        self.runtime.spawn(async move {
+        let handle = self.runtime.spawn(async move {
             let locked = inner.lock().await;
 
             locked
                 .trades(exchange, &symbol, move |trade| {
                     println!("[js-bridge] {} {}", trade.exchange, trade.symbol);
-
                     let payload = serde_json::to_string(&trade).unwrap();
-
                     tsfn.call(payload, ThreadsafeFunctionCallMode::NonBlocking);
                 })
                 .await;
         });
 
+        self.tasks.blocking_lock().push(handle);
+
         Ok(())
+    }
+
+    #[napi]
+    pub fn disconnect(&self) {
+        let mut tasks = self.tasks.blocking_lock();
+
+        for task in tasks.drain(..) {
+            task.abort();
+        }
+
+        println!("all tasks aborted");
     }
 }
